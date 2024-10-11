@@ -1,0 +1,63 @@
+﻿# Папки Visual Studio
+.vs/
+.vscode/
+
+# Папка сборок
+bin/
+obj/
+
+# Папки сборки в ASP.NET Core
+**/bin/
+**/obj/
+
+# Папка пакетов NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# Пакеты NuGet, кешированные и временные
+.nuget/
+**/project.lock.json
+**/project.fragment.lock.json
+
+# Логи, временные файлы, файлы настроек и конфигурации
+*.log
+*.user
+*.lock.json
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Файлы конфигурации IIS
+*.vspscc
+*.vssscc
+
+# Пакеты, опубликованные в Web Deploy
+.publish/
+
+# Папка временных файлов тестирования
+TestResults/
+
+# Файлы конфигурации для сторонних систем (например, Rider)
+.idea/
+
+# Файлы безопасности и пароли (собственные)
+secrets.json
+
+# Конфигурационные файлы для среды
+launchSettings.json
+
+# Временные файлы, используемые VSCode
+.vscode/
+
+# Файлы Docker
+**/Dockerfile
+**/docker-compose*
+
+# Папка MacOS
+.DS_Store
+
+# Кешированные данные и временные файлы .NET Core
+!**/wwwroot/*
+FinanceTracker.API/appsettings.json
+SocialNetwork.API/appsettings.json
