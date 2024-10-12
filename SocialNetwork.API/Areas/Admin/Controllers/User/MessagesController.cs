@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.User;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.Admin.Controllers.User
 {
     [ApiController]
-    [Route("api/messages")]
+    [Area("Admin")]
+    [Route("admin/messages")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ApiExplorerSettings(GroupName = "Admin")]
     public class MessagesController : ControllerBase
     {
         private readonly IMessageService _messageService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/messages?messageId=GUID&senderId=GUID&receiverId=GUID
+        // GET: admin/messages?messageId=GUID&senderId=GUID&receiverId=GUID
         [HttpGet]
         public async Task<IActionResult> GetMessages([FromQuery] Guid? messageId, [FromQuery] Guid? senderId, [FromQuery] Guid? receiverId)
         {
@@ -39,11 +44,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // GET: api/messages/conversation?requestingUserId=GUID&otherUserId=GUID
+        // GET: admin/messages/conversation?userId=GUID&otherUserId=GUID
         [HttpGet("conversation")]
-        public async Task<IActionResult> GetConversation([FromQuery] Guid requestingUserId, [FromQuery] Guid otherUserId)
+        public async Task<IActionResult> GetConversation([FromQuery] Guid userId, [FromQuery] Guid otherUserId)
         {
-            var (messages, error) = await _messageService.GetConversationAsync(requestingUserId, otherUserId);
+            var (messages, error) = await _messageService.GetConversationAsync(userId, otherUserId);
             if (!string.IsNullOrEmpty(error)) return BadRequest(new { Error = error });
 
             var response = messages.Select(message => new MessageResponse
@@ -60,11 +65,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/messages
+        // POST: admin/messages
         [HttpPost]
         public async Task<IActionResult> CreateMessage([FromBody] CreateMessageRequest request)
         {
-            var (message, error) = await _messageService.CreateMessageAsync(request.RequestingUserId, request.ReceiverId, request.Content);
+            var (message, error) = await _messageService.CreateMessageAsync(request.SenderId, request.ReceiverId, request.Content);
             if (!string.IsNullOrEmpty(error) || message == null) return BadRequest(new { Error = error });
 
             var response = new MessageResponse
@@ -81,7 +86,7 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetMessages), new { messageId = message.Id }, response);
         }
 
-        // PUT: api/messages/{messageId}
+        // PUT: admin/messages/{messageId}
         [HttpPut("{messageId}")]
         public async Task<IActionResult> UpdateMessage(Guid messageId, [FromBody] UpdateMessageRequest request)
         {
@@ -102,31 +107,31 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/messages/mark-as-read
+        // POST: admin/messages/mark-as-read
         [HttpPost("mark-as-read")]
         public async Task<IActionResult> MarkMessagesAsRead([FromBody] MarkMessagesAsReadRequest request)
         {
-            var (success, error) = await _messageService.MarkMessagesAsReadAsync(request.RequestingUserId, request.MessageIds);
+            var (success, error) = await _messageService.MarkMessagesAsReadAsync(request.UserId, request.MessageIds);
             if (!success) return BadRequest(new { Error = error });
 
             return Ok("Messages marked as read.");
         }
 
-        // DELETE: api/messages/{messageId}?requestingUserId=GUID
+        // DELETE: admin/messages/{messageId}?userId=GUID
         [HttpDelete("{messageId}")]
-        public async Task<IActionResult> DeleteMessage(Guid messageId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteMessage(Guid messageId, [FromQuery] Guid userId)
         {
-            var (deletedId, error) = await _messageService.DeleteMessageAsync(messageId, requestingUserId);
+            var (deletedId, error) = await _messageService.DeleteMessageAsync(messageId, userId);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });
         }
 
-        // DELETE: api/messages/conversation?requestingUserId=GUID&otherUserId=GUID
+        // DELETE: admin/messages/conversation?userId=GUID&otherUserId=GUID
         [HttpDelete("conversation")]
-        public async Task<IActionResult> DeleteConversation([FromQuery] Guid requestingUserId, [FromQuery] Guid otherUserId)
+        public async Task<IActionResult> DeleteConversation([FromQuery] Guid userId, [FromQuery] Guid otherUserId)
         {
-            var (success, error) = await _messageService.DeleteConversationAsync(requestingUserId, otherUserId);
+            var (success, error) = await _messageService.DeleteConversationAsync(userId, otherUserId);
             if (!success) return BadRequest(new { Error = error });
 
             return Ok("Conversation deleted successfully.");

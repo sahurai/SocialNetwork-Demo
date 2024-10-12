@@ -1,12 +1,18 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.Group;
+using SocialNetwork.Shared;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.User.Controllers.Group
 {
     [ApiController]
-    [Route("api/groups/blocks")]
+    [Authorize]
+    [Area("User")]
+    [Route("group-blocks")]
+    [ApiExplorerSettings(GroupName = "User")]
     public class GroupBlocksController : ControllerBase
     {
         private readonly IGroupBlockService _groupBlockService;
@@ -18,11 +24,14 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/groups/blocks
+        // GET: groups-blocks
         [HttpGet]
-        public async Task<IActionResult> GetGroupBlocks([FromQuery] Guid? groupBlockId, [FromQuery] Guid? groupId, [FromQuery] Guid? blockerId, [FromQuery] Guid? blockedId)
+        public async Task<IActionResult> GetGroupBlocks([FromQuery] Guid groupId, [FromQuery] Guid? groupBlockId, [FromQuery] Guid? blockerId, [FromQuery] Guid? blockedId)
         {
-            var (blocks, error) = await _groupBlockService.GetGroupBlocksAsync(groupBlockId, groupId, blockerId, blockedId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (blocks, error) = await _groupBlockService.GetGroupBlocksAsync(userId.Value, groupId, groupBlockId, blockerId, blockedId);
             if (!string.IsNullOrEmpty(error)) return BadRequest(new { Error = error });
 
             var response = blocks.Select(block => new GroupBlockResponse
@@ -38,11 +47,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/groups/blocks
+        // POST: group-blocks
         [HttpPost]
-        public async Task<IActionResult> CreateGroupBlock([FromBody] CreateGroupBlockRequest request)
+        public async Task<IActionResult> CreateGroupBlock([FromBody] CreateGroupBlockByUserRequest request)
         {
-            var (block, error) = await _groupBlockService.CreateGroupBlockAsync(request.GroupId, request.RequestingUserId, request.BlockedId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (block, error) = await _groupBlockService.CreateGroupBlockAsync(request.GroupId, userId.Value, request.BlockedId);
             if (!string.IsNullOrEmpty(error) || block == null) return BadRequest(new { Error = error });
 
             var response = new GroupBlockResponse
@@ -58,11 +70,14 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetGroupBlocks), new { groupBlockId = block.Id }, response);
         }
 
-        // DELETE: api/groups/blocks/{id}
+        // DELETE: groups-blocks/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteGroupBlock(Guid id, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteGroupBlock(Guid id)
         {
-            var (deletedId, error) = await _groupBlockService.DeleteGroupBlockAsync(id, requestingUserId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (deletedId, error) = await _groupBlockService.DeleteGroupBlockAsync(id, userId.Value);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

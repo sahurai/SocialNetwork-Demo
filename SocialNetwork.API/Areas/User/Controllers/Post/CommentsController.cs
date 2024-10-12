@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using SocialNetwork.API.DTO.Post;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Shared;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.User.Controllers.Post
 {
     [ApiController]
-    [Route("api/comments")]
+    [Authorize]
+    [Area("User")]
+    [Route("comments")]
+    [ApiExplorerSettings(GroupName = "User")]
     public class CommentsController : ControllerBase
     {
         private readonly ICommentService _commentService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/comments
+        // GET: comments
         [HttpGet]
         public async Task<IActionResult> GetComments([FromQuery] Guid? commentId, [FromQuery] Guid? postId, [FromQuery] Guid? authorId, [FromQuery] string? content)
         {
@@ -38,11 +43,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/comments
+        // POST: comments
         [HttpPost]
-        public async Task<IActionResult> CreateComment([FromBody] CreateCommentRequest request)
+        public async Task<IActionResult> CreateComment([FromBody] CreateCommentByUserRequest request)
         {
-            var (comment, error) = await _commentService.CreateCommentAsync(request.RequestingUserId, request.PostId, request.Content);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (comment, error) = await _commentService.CreateCommentAsync(userId.Value, request.PostId, request.Content);
             if (!string.IsNullOrEmpty(error) || comment == null) return BadRequest(new { Error = error });
 
             var response = new CommentResponse
@@ -58,11 +66,14 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetComments), new { commentId = comment.Id }, response);
         }
 
-        // PUT: api/comments/{commentId}
+        // PUT: comments/{commentId}
         [HttpPut("{commentId}")]
-        public async Task<IActionResult> UpdateComment(Guid commentId, [FromBody] UpdateCommentRequest request)
+        public async Task<IActionResult> UpdateComment(Guid commentId, [FromBody] UpdateCommentByUserRequest request)
         {
-            var (updatedComment, error) = await _commentService.UpdateCommentAsync(commentId, request.RequestingUserId, request.Content);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (updatedComment, error) = await _commentService.UpdateCommentAsync(commentId, userId.Value, request.Content);
             if (!string.IsNullOrEmpty(error) || updatedComment == null) return BadRequest(new { Error = error });
 
             var response = new CommentResponse
@@ -78,11 +89,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // DELETE: api/comments/{commentId}
+        // DELETE: comments/{commentId}
         [HttpDelete("{commentId}")]
-        public async Task<IActionResult> DeleteComment(Guid commentId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteComment(Guid commentId)
         {
-            var (deletedId, error) = await _commentService.DeleteCommentAsync(commentId, requestingUserId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (deletedId, error) = await _commentService.DeleteCommentAsync(commentId, userId.Value);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

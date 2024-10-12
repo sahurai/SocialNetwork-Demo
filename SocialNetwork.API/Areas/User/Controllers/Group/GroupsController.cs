@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using SocialNetwork.API.DTO.Group;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Shared;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.User.Controllers.Group
 {
     [ApiController]
-    [Route("api/groups")]
+    [Authorize]
+    [Area("User")]
+    [Route("groups")]
+    [ApiExplorerSettings(GroupName = "User")]
     public class GroupsController : ControllerBase
     {
         private readonly IGroupService _groupService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/groups
+        // GET: groups
         [HttpGet]
         public async Task<IActionResult> GetGroups([FromQuery] Guid? groupId, [FromQuery] Guid? creatorId, [FromQuery] string? name, [FromQuery] string? description)
         {
@@ -38,11 +43,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/groups
+        // POST: groups
         [HttpPost]
-        public async Task<IActionResult> CreateGroup([FromBody] CreateGroupRequest request)
+        public async Task<IActionResult> CreateGroup([FromBody] CreateGroupByUserRequest request)
         {
-            var (group, error) = await _groupService.CreateGroupAsync(request.RequestingUserId, request.Name, request.Description);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (group, error) = await _groupService.CreateGroupAsync(userId.Value, request.Name, request.Description);
             if (!string.IsNullOrEmpty(error) || group == null) return BadRequest(new { Error = error });
 
             var response = new GroupResponse
@@ -58,11 +66,14 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetGroups), new { groupId = group.Id }, response);
         }
 
-        // PUT: api/groups/{groupId}
+        // PUT: groups/{groupId}
         [HttpPut("{groupId}")]
-        public async Task<IActionResult> UpdateGroup(Guid groupId, [FromBody] UpdateGroupRequest request)
+        public async Task<IActionResult> UpdateGroup(Guid groupId, [FromBody] UpdateGroupByUserRequest request)
         {
-            var (updatedGroup, error) = await _groupService.UpdateGroupAsync(groupId, request.RequestingUserId, request.CreatorId, request.Name, request.Description);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (updatedGroup, error) = await _groupService.UpdateGroupAsync(groupId, userId.Value, request.Name, request.Description);
             if (!string.IsNullOrEmpty(error) || updatedGroup == null) return BadRequest(new { Error = error });
 
             var response = new GroupResponse
@@ -78,11 +89,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // DELETE: api/groups/{groupId}
+        // DELETE: groups/{groupId}
         [HttpDelete("{groupId}")]
-        public async Task<IActionResult> DeleteGroup(Guid groupId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteGroup(Guid groupId)
         {
-            var (deletedId, error) = await _groupService.DeleteGroupAsync(groupId, requestingUserId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (deletedId, error) = await _groupService.DeleteGroupAsync(groupId, userId.Value);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

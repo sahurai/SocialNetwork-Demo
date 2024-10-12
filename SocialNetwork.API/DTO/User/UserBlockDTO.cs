@@ -1,8 +1,13 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.User
 {
     public record CreateUserBlockRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid BlockerId { get; init; }
+        public Guid BlockedId { get; init; }
+    }
+
+    public record CreateUserBlockByUserRequest
+    {
         public Guid BlockedId { get; init; }
     }
 

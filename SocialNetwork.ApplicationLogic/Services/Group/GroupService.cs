@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using SocialNetwork.Core.Enums;
 using SocialNetwork.Core.Models;
 using SocialNetwork.DataAccess.Repositories;
 
@@ -7,11 +8,16 @@ namespace SocialNetwork.ApplicationLogic.Services
     public class GroupService : IGroupService
     {
         private readonly IGroupRepository _groupRepository;
+        private readonly IGroupUserRoleRepository _groupUserRoleRepository;
         private readonly ILogger<GroupService> _logger;
 
-        public GroupService(IGroupRepository groupRepository, ILogger<GroupService> logger)
+        public GroupService(
+            IGroupRepository groupRepository,
+            IGroupUserRoleRepository groupUserRoleRepository,
+            ILogger<GroupService> logger)
         {
             _groupRepository = groupRepository;
+            _groupUserRoleRepository = groupUserRoleRepository;
             _logger = logger;
         }
 
@@ -45,6 +51,31 @@ namespace SocialNetwork.ApplicationLogic.Services
 
                 // Save to the database
                 var createdGroup = await _groupRepository.CreateAsync(group);
+                if (createdGroup == null) return (null, "Failed to create the group.");
+
+                // Assign the Admin role to the requesting user
+                var (groupUserRole, roleError) = GroupUserRole.Create(
+                    groupId: createdGroup.Id,
+                    userId: requestingUserId,
+                    role: GroupRole.Admin
+                );
+
+                if (groupUserRole == null)
+                {
+                    // If role assignment fails, delete the created group to maintain data integrity
+                    await _groupRepository.DeleteAsync(createdGroup.Id);
+                    return (null, roleError);
+                }
+
+                // Save the user role to the database
+                var createdRole = await _groupUserRoleRepository.CreateAsync(groupUserRole);
+                if (createdRole == null)
+                {
+                    // If role assignment fails, delete the created group to maintain data integrity
+                    await _groupRepository.DeleteAsync(createdGroup.Id);
+                    return (null, "Failed to assign Admin role to the user.");
+                }
+
                 return (createdGroup, string.Empty);
             }
             catch (Exception ex)
@@ -58,7 +89,6 @@ namespace SocialNetwork.ApplicationLogic.Services
         public async Task<(Group? Group, string Error)> UpdateGroupAsync(
             Guid groupId,
             Guid requestingUserId,
-            Guid? creatorId,
             string? name,
             string? description)
         {
@@ -69,19 +99,19 @@ namespace SocialNetwork.ApplicationLogic.Services
                 var group = groups.FirstOrDefault();
                 if (group == null) return (null, "Group not found.");
 
-                // Ensure the requester is the creator of the group
-                if (group.CreatorId != requestingUserId)
-                    return (null, "You can only update your own groups.");
+                // Check if the user has at least Admin role in the group
+                var userRoles = await _groupUserRoleRepository.GetAsync(groupId: groupId, userId: requestingUserId);
+                if (!userRoles.Any(gur => gur.Role == GroupRole.Admin))
+                    return (null, "You must be an Admin to update this group.");
 
                 // Update fields
-                Guid updatedCreatorId = creatorId ?? group.CreatorId;
                 string updatedName = name ?? group.Name;
                 string? updatedDescription = description ?? group.Description;
 
                 // Create updated group model
                 var (updatedGroup, createError) = Group.CreateFromDb(
                     group.Id,
-                    updatedCreatorId,
+                    group.CreatorId,
                     updatedName,
                     updatedDescription,
                     group.CreatedAt,
@@ -110,9 +140,10 @@ namespace SocialNetwork.ApplicationLogic.Services
                 var group = groups.FirstOrDefault();
                 if (group == null) return (Guid.Empty, "Group not found.");
 
-                // Check if the requesting user is the creator
-                if (group.CreatorId != requestingUserId)
-                    return (Guid.Empty, "You can only delete your own groups.");
+                // Check if the user has at least Admin role in the group
+                var userRoles = await _groupUserRoleRepository.GetAsync(groupId: groupId, userId: requestingUserId);
+                if (!userRoles.Any(gur => gur.Role == GroupRole.Admin))
+                    return (Guid.Empty, "You must be an Admin to delete this group.");
 
                 // Delete from the database
                 var deletedId = await _groupRepository.DeleteAsync(groupId);

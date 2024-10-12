@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using SocialNetwork.Core.Enums;
 using SocialNetwork.Core.Validators;
 
 namespace SocialNetwork.Core.Models
@@ -11,6 +12,7 @@ namespace SocialNetwork.Core.Models
     {
         public string Username { get; }
         public string Email { get; }
+        public UserRole Role { get; }
         public string PasswordHash { get; }
         public ICollection<Guid> Posts { get; } = new List<Guid>();
         public ICollection<Guid> Friendships { get; } = new List<Guid>();
@@ -18,11 +20,12 @@ namespace SocialNetwork.Core.Models
         public ICollection<Guid> BlockedUsers { get; } = new List<Guid>();
 
         // Private constructor
-        private User(Guid id, string username, string email, string passwordHash)
+        private User(Guid id, string username, string email, UserRole role, string passwordHash)
         {
             Id = id;
             Username = username;
             Email = email;
+            Role = role;
             PasswordHash = passwordHash;
         }
 
@@ -30,9 +33,17 @@ namespace SocialNetwork.Core.Models
         public static (User? User, string Error) Create(
             string userName,
             string email,
+            UserRole role,
             string passwordHash)
         {
-            var user = new User(Guid.NewGuid(), userName, email, passwordHash);
+            // Create model
+            var user = new User(
+                Guid.NewGuid(),
+                userName,
+                email,
+                role,
+                passwordHash
+            );
 
             // Validate the instance
             var validator = new UserValidator();
@@ -52,11 +63,12 @@ namespace SocialNetwork.Core.Models
             Guid id,
             string userName,
             string email,
+            UserRole role,
             string passwordHash,
             DateTime createdAt,
             DateTime updatedAt)
         {
-            var user = new User(id, userName, email, passwordHash)
+            var user = new User(id, userName, email, role, passwordHash)
             {
                 CreatedAt = createdAt,
                 UpdatedAt = updatedAt

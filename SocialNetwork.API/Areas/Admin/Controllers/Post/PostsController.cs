@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.Post;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.Admin.Controllers.Post
 {
     [ApiController]
-    [Route("api/posts")]
+    [Area("Admin")]
+    [Route("admin/posts")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ApiExplorerSettings(GroupName = "Admin")]
     public class PostsController : ControllerBase
     {
         private readonly IPostService _postService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/posts
+        // GET: admin/posts
         [HttpGet]
         public async Task<IActionResult> GetPosts([FromQuery] Guid? postId, [FromQuery] Guid? authorId, [FromQuery] Guid? groupId, [FromQuery] string? content)
         {
@@ -38,11 +43,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/posts
+        // POST: admin/posts
         [HttpPost]
         public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
         {
-            var (post, error) = await _postService.CreatePostAsync(request.RequestingUserId, request.Content, request.GroupId);
+            var (post, error) = await _postService.CreatePostAsync(request.UserId, request.Content, request.GroupId);
             if (!string.IsNullOrEmpty(error) || post == null) return BadRequest(new { Error = error });
 
             var response = new PostResponse
@@ -58,11 +63,11 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetPosts), new { postId = post.Id }, response);
         }
 
-        // PUT: api/posts/{postId}
+        // PUT: admin/posts/{postId}
         [HttpPut("{postId}")]
         public async Task<IActionResult> UpdatePost(Guid postId, [FromBody] UpdatePostRequest request)
         {
-            var (updatedPost, error) = await _postService.UpdatePostAsync(postId, request.RequestingUserId, request.Content);
+            var (updatedPost, error) = await _postService.UpdatePostAsync(postId, request.UserId, request.Content);
             if (!string.IsNullOrEmpty(error) || updatedPost == null) return BadRequest(new { Error = error });
 
             var response = new PostResponse
@@ -78,11 +83,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // DELETE: api/posts/{postId}
+        // DELETE: admin/posts/{postId}
         [HttpDelete("{postId}")]
-        public async Task<IActionResult> DeletePost(Guid postId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeletePost(Guid postId, [FromQuery] Guid authorId)
         {
-            var (deletedId, error) = await _postService.DeletePostAsync(postId, requestingUserId);
+            var (deletedId, error) = await _postService.DeletePostAsync(postId, authorId);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

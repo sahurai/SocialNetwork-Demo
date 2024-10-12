@@ -1,16 +1,27 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.Group
 {
     public record CreateGroupRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
+        public string Name { get; init; }
+        public string? Description { get; init; }
+    }
+
+    public record CreateGroupByUserRequest
+    {
         public string Name { get; init; }
         public string? Description { get; init; }
     }
 
     public record UpdateGroupRequest
     {
-        public Guid RequestingUserId { get; init; }
-        public Guid? CreatorId { get; init; }
+        public Guid UserId { get; init; }
+        public string? Name { get; init; }
+        public string? Description { get; init; }
+    }
+
+    public record UpdateGroupByUserRequest
+    {
         public string? Name { get; init; }
         public string? Description { get; init; }
     }

@@ -1,8 +1,14 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.User
 {
     public record CreateMessageRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid SenderId { get; init; }
+        public Guid ReceiverId { get; init; }
+        public string Content { get; init; }
+    }
+
+    public record CreateMessageByUserRequest
+    {
         public Guid ReceiverId { get; init; }
         public string Content { get; init; }
     }
@@ -13,9 +19,19 @@
         public string Content { get; init; }
     }
 
+    public record UpdateMessageByUserRequest
+    {
+        public string Content { get; init; }
+    }
+
     public record MarkMessagesAsReadRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
+        public List<Guid> MessageIds { get; init; }
+    }
+
+    public record MarkMessagesAsReadByUserRequest
+    {
         public List<Guid> MessageIds { get; init; }
     }
 

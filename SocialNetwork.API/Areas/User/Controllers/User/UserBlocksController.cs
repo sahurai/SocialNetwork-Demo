@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using SocialNetwork.API.DTO.User;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Shared;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.User.Controllers.User
 {
     [ApiController]
-    [Route("api/user/blocks")]
+    [Authorize]
+    [Area("User")]
+    [Route("user-blocks")]
+    [ApiExplorerSettings(GroupName = "User")]
     public class UserBlocksController : ControllerBase
     {
         private readonly IUserBlockService _userBlockService;
@@ -18,11 +23,14 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/user/blocks?blockerId=GUID&blockedId=GUID
+        // GET: user-blocks
         [HttpGet]
-        public async Task<IActionResult> GetUserBlocks([FromQuery] Guid? blockerId, [FromQuery] Guid? blockedId)
+        public async Task<IActionResult> GetUserBlocks()
         {
-            var (blocks, error) = await _userBlockService.GetUserBlocksAsync(blockerId, blockedId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (blocks, error) = await _userBlockService.GetUserBlocksAsync(userId.Value);
             if (!string.IsNullOrEmpty(error)) return BadRequest(new { Error = error });
 
             var response = blocks.Select(block => new UserBlockResponse
@@ -37,11 +45,14 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/user/blocks
+        // POST: user-blocks
         [HttpPost]
-        public async Task<IActionResult> CreateUserBlock([FromBody] CreateUserBlockRequest request)
+        public async Task<IActionResult> CreateUserBlock([FromBody] CreateUserBlockByUserRequest request)
         {
-            var (block, error) = await _userBlockService.CreateUserBlockAsync(request.RequestingUserId, request.BlockedId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (block, error) = await _userBlockService.CreateUserBlockAsync(userId.Value, request.BlockedId);
             if (!string.IsNullOrEmpty(error) || block == null) return BadRequest(new { Error = error });
 
             var response = new UserBlockResponse
@@ -56,11 +67,14 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetUserBlocks), new { userBlockId = block.Id }, response);
         }
 
-        // DELETE: api/user/blocks/{userBlockId}?requestingUserId=GUID
+        // DELETE: user-blocks/{userBlockId}
         [HttpDelete("{userBlockId}")]
-        public async Task<IActionResult> DeleteUserBlock(Guid userBlockId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteUserBlock(Guid userBlockId)
         {
-            var (deletedId, error) = await _userBlockService.DeleteUserBlockAsync(userBlockId, requestingUserId);
+            var (userId, extractError) = Utilities.ExtractUserIdFromClaimsPrincipal(User);
+            if (!string.IsNullOrEmpty(extractError) || userId == null) return Unauthorized(new { error = extractError });
+
+            var (deletedId, error) = await _userBlockService.DeleteUserBlockAsync(userBlockId, userId.Value);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

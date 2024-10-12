@@ -1,18 +1,29 @@
 ﻿using SocialNetwork.Core.Enums;
 
-namespace SocialNetwork.Api.DTOs
+namespace SocialNetwork.API.DTO.Group
 {
     public record CreateGroupUserRoleRequest
     {
         public Guid GroupId { get; init; }
-        public Guid RequestingUserId { get; init; }
-        public GroupRole Role { get; init; }
+        public Guid UserId { get; init; }
+    }
+
+    public record CreateGroupUserRoleByUserRequest
+    {
+        public Guid GroupId { get; init; }
+        public Guid UserId { get; init; }
     }
 
     public record UpdateGroupUserRoleRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
         public GroupRole Role { get; init; }
+    }
+
+    public record UpdateGroupUserRoleByUserRequest
+    {
+        public Guid GroupId { get; init; }
+        public Guid UserId { get; init; }
     }
 
     public record GroupUserRoleResponse

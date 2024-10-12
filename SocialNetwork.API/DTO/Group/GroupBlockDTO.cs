@@ -1,9 +1,15 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.Group
 {
     public record CreateGroupBlockRequest
     {
         public Guid GroupId { get; init; }
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
+        public Guid BlockedId { get; init; }
+    }
+
+    public record CreateGroupBlockByUserRequest
+    {
+        public Guid GroupId { get; init; }
         public Guid BlockedId { get; init; }
     }
 

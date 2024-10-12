@@ -8,6 +8,15 @@ using Microsoft.EntityFrameworkCore;
 using SocialNetwork.Core.Interfaces.Repositories.PostRepository;
 using SocialNetwork.Core.Interfaces.Services.UserService;
 using SocialNetwork.Core.Interfaces.Repositories.UserRepository;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using SocialNetwork.ApplicationLogic.Services.Auth;
+using SocialNetwork.DataAccess.Repository.Auth;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +25,36 @@ builder.Services.AddControllers();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // Create Swagger documents for Admin and User areas
+    c.SwaggerDoc("Admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
+    c.SwaggerDoc("User", new OpenApiInfo { Title = "User API", Version = "v1" });
 
-// Add a single HttpClient registration
+    // Enable grouping by ApiExplorerSettings GroupName
+    c.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo))
+            return false;
+
+        var versions = methodInfo.DeclaringType
+            .GetCustomAttributes(true)
+            .OfType<ApiExplorerSettingsAttribute>()
+            .Select(attr => attr.GroupName);
+
+        return versions.Any(v => v == docName);
+    });
+
+    // Optionally include XML comments (if you have them)
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
+
+// HttpClient registration
 builder.Services.AddHttpClient();
 
 // Add FluentValidation
@@ -56,6 +92,11 @@ builder.Services.AddScoped<IUserBlockRepository, UserBlockRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+// Auth
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
 // Messages 
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
@@ -87,6 +128,45 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Auth
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    // Doesn't work without it
+    options.UseSecurityTokenValidators = true;
+
+    // Params
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            context.Token = context.Request.Cookies["AccessToken"];
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine(context.Exception);
+            return Task.CompletedTask;
+        }
+    };
+});
+
 // Build the application
 var app = builder.Build();
 
@@ -99,13 +179,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SocialNetwork API V1");
+        // Add Swagger endpoints for both Admin and User areas
+        c.SwaggerEndpoint("/swagger/User/swagger.json", "User API");
+        c.SwaggerEndpoint("/swagger/Admin/swagger.json", "Admin API");
+
+        // Set the Swagger UI at the application's root
         c.RoutePrefix = string.Empty;
     });
 }
 
 // Redirect HTTP requests to HTTPS
 app.UseHttpsRedirection();
+
+// Auth
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Map controller endpoints
 app.MapControllers();

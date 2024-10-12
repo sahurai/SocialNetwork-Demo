@@ -1,12 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
-using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.Group;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.Admin.Controllers.Group
 {
     [ApiController]
-    [Route("api/groups/roles")]
+    [Area("Admin")]
+    [Route("admin/group-roles")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ApiExplorerSettings(GroupName = "Admin")]
     public class GroupUserRolesController : ControllerBase
     {
         private readonly IGroupUserRoleService _groupUserRoleService;
@@ -18,41 +22,41 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/groups/roles
+        // GET: admin/group-roles
         [HttpGet]
-        public async Task<IActionResult> GetGroupUserRoles([FromQuery] Guid? groupUserRoleId, [FromQuery] Guid? groupId, [FromQuery] Guid? userId)
+        public async Task<IActionResult> GetGroupUserRoles([FromQuery] Guid userId, [FromQuery] Guid groupId, [FromQuery] Guid? groupUserRoleId,  [FromQuery] Guid? memberId)
         {
-            var (roles, error) = await _groupUserRoleService.GetGroupUserRolesAsync(groupUserRoleId, groupId, userId);
+            var (roles, error) = await _groupUserRoleService.GetGroupUserRolesAsync(userId, groupId, groupUserRoleId, memberId);
             if (!string.IsNullOrEmpty(error)) return BadRequest(new { Error = error });
 
             return Ok(roles);
         }
 
-        // POST: api/groups/roles
+        // POST: admin/group-roles
         [HttpPost]
         public async Task<IActionResult> CreateGroupUserRole([FromBody] CreateGroupUserRoleRequest request)
         {
-            var (role, error) = await _groupUserRoleService.CreateGroupUserRoleAsync(request.GroupId, request.RequestingUserId, request.Role);
+            var (role, error) = await _groupUserRoleService.CreateGroupUserRoleAsync(request.GroupId, request.UserId);
             if (!string.IsNullOrEmpty(error) || role == null) return BadRequest(new { Error = error });
 
             return CreatedAtAction(nameof(GetGroupUserRoles), new { groupUserRoleId = role.Id }, role);
         }
 
-        // PUT: api/groups/roles/{groupUserRoleId}
+        // PUT: admin/group-roles/{groupUserRoleId}
         [HttpPut("{groupUserRoleId}")]
         public async Task<IActionResult> UpdateGroupUserRole(Guid groupUserRoleId, [FromBody] UpdateGroupUserRoleRequest request)
         {
-            var (updatedRole, error) = await _groupUserRoleService.UpdateGroupUserRoleAsync(groupUserRoleId, request.RequestingUserId, request.Role);
+            var (updatedRole, error) = await _groupUserRoleService.UpdateGroupUserRoleAsync(groupUserRoleId, request.UserId, request.Role);
             if (!string.IsNullOrEmpty(error) || updatedRole == null) return BadRequest(new { Error = error });
 
             return Ok(updatedRole);
         }
 
-        // DELETE: api/groups/roles/{groupUserRoleId}
+        // DELETE: admin/group-roles/{groupUserRoleId}
         [HttpDelete("{groupUserRoleId}")]
-        public async Task<IActionResult> DeleteGroupUserRole(Guid groupUserRoleId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteGroupUserRole(Guid groupUserRoleId, [FromQuery] Guid userWithRightsId)
         {
-            var (deletedId, error) = await _groupUserRoleService.DeleteGroupUserRoleAsync(groupUserRoleId, requestingUserId);
+            var (deletedId, error) = await _groupUserRoleService.DeleteGroupUserRoleAsync(groupUserRoleId, userWithRightsId);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

@@ -17,10 +17,22 @@ namespace SocialNetwork.DataAccess.Configurations
                 .HasMaxLength(Constants.MaxUsernameLength)
                 .IsRequired();
 
+            // Username must be unique
+            builder.HasIndex(user => user.Username)
+                .IsUnique();
+
             // Email is required and must follow the email format
             builder.Property(user => user.Email)
                 .IsRequired()
                 .HasMaxLength(Constants.MaxEmailLength);
+
+            // Email must be unique
+            builder.HasIndex(user => user.Email)
+                .IsUnique();
+
+            // User role in the system
+            builder.Property(user => user.Role)
+                .IsRequired();
 
             // Password is required
             builder.Property(user => user.PasswordHash)
@@ -55,6 +67,13 @@ namespace SocialNetwork.DataAccess.Configurations
                 .WithOne(block => block.Blocker)
                 .HasForeignKey(block => block.BlockerId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // One-to-Many: User -> RefreshTokens
+            // A user can have multiple refresh tokens
+            builder.HasMany(user => user.RefreshTokens)
+                .WithOne(token => token.User)
+                .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // If user is deleted, delete all refresh tokens
         }
     }
 }

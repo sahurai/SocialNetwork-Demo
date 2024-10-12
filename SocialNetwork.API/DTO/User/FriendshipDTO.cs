@@ -1,9 +1,14 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.User
 {
     public record CreateFriendshipRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid User1Id { get; init; }
         public Guid User2Id { get; init; }
+    }
+
+    public record CreateFriendshipByUserRequest
+    {
+        public Guid newFriendId { get; init; }
     }
 
     public record FriendshipResponse

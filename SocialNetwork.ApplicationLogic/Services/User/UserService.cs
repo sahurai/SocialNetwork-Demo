@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using SocialNetwork.Core.Enums;
 using SocialNetwork.Core.Interfaces.Repositories.UserRepository;
 using SocialNetwork.Core.Interfaces.Services.UserService;
 using SocialNetwork.Core.Models;
@@ -17,11 +18,11 @@ namespace SocialNetwork.ApplicationLogic.Services
         }
 
         // Retrieve users with optional filtering
-        public async Task<(List<User> Users, string Error)> GetUsersAsync(Guid? userId = null, string? username = null, string? email = null)
+        public async Task<(List<User> Users, string Error)> GetUsersAsync(Guid? userId = null, string? username = null, string? email = null, UserRole? role = null)
         {
             try
             {
-                var users = await _userRepository.GetAsync(userId, username, email);
+                var users = await _userRepository.GetAsync(userId, username, email, role);
                 return (users, string.Empty);
             }
             catch (Exception ex)
@@ -32,7 +33,7 @@ namespace SocialNetwork.ApplicationLogic.Services
         }
 
         // Create a new user
-        public async Task<(User? User, string Error)> CreateUserAsync(string username, string email, string password)
+        public async Task<(User? User, string Error)> CreateUserAsync(string username, string email, UserRole role, string password)
         {
             try
             {
@@ -40,11 +41,15 @@ namespace SocialNetwork.ApplicationLogic.Services
                 var existingUsers = await _userRepository.GetAsync(email: email);
                 if (existingUsers.Any()) return (null, "An account with this email already exists.");
 
+                // Check if username already exists
+                existingUsers = await _userRepository.GetAsync(username: username);
+                if (existingUsers.Any()) return (null, "An account with this username already exists.");
+
                 // Hash the password
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
                 // Create the user model
-                var (user, createError) = User.Create(username, email, passwordHash);
+                var (user, createError) = User.Create(username, email, role, passwordHash);
                 if (user == null) return (null, createError);
 
                 // Save to the database
@@ -88,6 +93,7 @@ namespace SocialNetwork.ApplicationLogic.Services
                     user.Id,
                     updatedUsername,
                     updatedEmail,
+                    user.Role,
                     updatedPasswordHash,
                     user.CreatedAt,
                     DateTime.UtcNow);
@@ -105,7 +111,7 @@ namespace SocialNetwork.ApplicationLogic.Services
         }
 
         // Delete a user
-        public async Task<(Guid Id, string Error)> DeleteUserAsync(Guid id, Guid requestingUserId)
+        public async Task<(Guid Id, string Error)> DeleteUserAsync(Guid id)
         {
             try
             {
@@ -113,9 +119,6 @@ namespace SocialNetwork.ApplicationLogic.Services
                 var users = await _userRepository.GetAsync(userId: id);
                 var user = users.FirstOrDefault();
                 if (user == null) return (Guid.Empty, "User not found.");
-
-                // Check if the requesting user is the same as the user to be deleted
-                if (user.Id != requestingUserId) return (Guid.Empty, "You can only delete your own account.");
 
                 // Delete from the database
                 var deletedId = await _userRepository.DeleteAsync(id);

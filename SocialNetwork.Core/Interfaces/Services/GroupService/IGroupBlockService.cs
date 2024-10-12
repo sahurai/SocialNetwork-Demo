@@ -6,6 +6,6 @@ namespace SocialNetwork.ApplicationLogic.Services
     {
         Task<(GroupBlock? Block, string Error)> CreateGroupBlockAsync(Guid groupId, Guid requestingUserId, Guid blockedId);
         Task<(Guid Id, string Error)> DeleteGroupBlockAsync(Guid id, Guid requestingUserId);
-        Task<(List<GroupBlock> Blocks, string Error)> GetGroupBlocksAsync(Guid? groupBlockId = null, Guid? groupId = null, Guid? blockerId = null, Guid? blockedId = null);
+        Task<(List<GroupBlock> Blocks, string Error)> GetGroupBlocksAsync(Guid requestingUserId, Guid groupId, Guid? blockId = null, Guid? blockerId = null, Guid? blockedId = null);
     }
 }

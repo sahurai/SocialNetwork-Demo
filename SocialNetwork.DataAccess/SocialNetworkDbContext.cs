@@ -5,6 +5,8 @@ using SocialNetwork.DataAccess.Entities.Group;
 using SocialNetwork.DataAccess.Entities.Post;
 using SocialNetwork.DataAccess.Configurations;
 using SocialNetwork.DataAccess.Configurations.Group;
+using SocialNetwork.DataAccess.Entities.Auth;
+using SocialNetwork.DataAccess.Configurations.Auth;
 
 namespace SocialNetwork.DataAccess
 {
@@ -23,6 +25,7 @@ namespace SocialNetwork.DataAccess
         public DbSet<GroupEntity> Groups { get; set; }
         public DbSet<GroupUserRoleEntity> GroupUserRoles { get; set; }
         public DbSet<GroupBlockEntity> GroupBlocks { get; set; }
+        public DbSet<RefreshTokenEntity> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,6 +42,7 @@ namespace SocialNetwork.DataAccess
             modelBuilder.ApplyConfiguration(new GroupConfiguration());
             modelBuilder.ApplyConfiguration(new GroupUserRoleConfiguration());
             modelBuilder.ApplyConfiguration(new GroupBlockConfiguration());
+            modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
         }
     }
 }

@@ -17,11 +17,22 @@ namespace SocialNetwork.ApplicationLogic.Services
         }
 
         // Retrieve group user roles with optional filtering
-        public async Task<(List<GroupUserRole> Roles, string Error)> GetGroupUserRolesAsync(Guid? groupUserRoleId = null, Guid? groupId = null, Guid? userId = null)
+        public async Task<(List<GroupUserRole> Roles, string Error)> GetGroupUserRolesAsync(Guid requestingUserId, Guid groupId, Guid? groupUserRoleId = null, Guid? memberId = null)
         {
             try
             {
-                var roles = await _roleRepository.GetAsync(groupUserRoleId, groupId, userId);
+                // Check user's role
+                var userRoles = await _roleRepository.GetAsync(groupId: groupId, userId: requestingUserId);
+                var userRole = userRoles.FirstOrDefault();
+                if (userRole == null) return (new List<GroupUserRole>(), "You are not member of this group.");
+
+                // Check if he has enough rights
+                if (userRole.Role != GroupRole.Manager && userRole.Role != GroupRole.Admin)
+                {
+                    return (new List<GroupUserRole>(), "You don't have enough rights.");
+                }
+
+                var roles = await _roleRepository.GetAsync(groupUserRoleId, groupId, memberId);
                 return (roles, string.Empty);
             }
             catch (Exception ex)
@@ -32,12 +43,16 @@ namespace SocialNetwork.ApplicationLogic.Services
         }
 
         // Create a new group user role
-        public async Task<(GroupUserRole? Role, string Error)> CreateGroupUserRoleAsync(Guid groupId, Guid requestingUserId, GroupRole role)
+        public async Task<(GroupUserRole? Role, string Error)> CreateGroupUserRoleAsync(Guid groupId, Guid requestingUserId)
         {
             try
             {
-                // Create the role model
-                var (groupUserRole, createError) = GroupUserRole.Create(requestingUserId, groupId, role);
+                // Check if the user is already a member of the group
+                var existingRoles = await _roleRepository.GetAsync(groupId: groupId, userId: requestingUserId);
+                if (existingRoles.Any()) return (null, "You are already a member of the group.");
+
+                // Assign default role 'Member' when a user joins a group
+                var (groupUserRole, createError) = GroupUserRole.Create(requestingUserId, groupId, GroupRole.Member);
                 if (groupUserRole == null) return (null, createError);
 
                 // Save to the database
@@ -46,13 +61,13 @@ namespace SocialNetwork.ApplicationLogic.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while creating a group user role.");
-                return (null, "An error occurred while creating the group user role.");
+                _logger.LogError(ex, "An error occurred while joining the group.");
+                return (null, "An error occurred while joining the group.");
             }
         }
 
         // Update an existing group user role
-        public async Task<(GroupUserRole? Role, string Error)> UpdateGroupUserRoleAsync(Guid groupUserRoleId, Guid requestingUserId, GroupRole role)
+        public async Task<(GroupUserRole? Role, string Error)> UpdateGroupUserRoleAsync(Guid groupUserRoleId, Guid requestingUserId, GroupRole newRole)
         {
             try
             {
@@ -64,23 +79,24 @@ namespace SocialNetwork.ApplicationLogic.Services
                 // Retrieve the requesting user's role in the same group
                 var requesterRoles = await _roleRepository.GetAsync(groupId: groupUserRole.GroupId, userId: requestingUserId);
                 var requesterRole = requesterRoles.FirstOrDefault();
-                if (requesterRole == null)
+
+                if (requesterRole == null || requesterRole.Role != GroupRole.Admin)
                 {
-                    return (null, "Requesting user does not have a role in this group.");
+                    return (null, "Only Admins can update user roles.");
                 }
 
-                // If updating the role to Manager, ensure the requester is an Admin
-                if (role == GroupRole.Manager && requesterRole.Role != GroupRole.Admin)
+                // Prevent self-demotion or unauthorized changes
+                if (groupUserRole.UserId == requestingUserId && newRole != GroupRole.Admin)
                 {
-                    return (null, "Only Admins can assign the Manager role.");
+                    return (null, "Admins cannot change their own role to a lower level.");
                 }
 
-                // Revert to using model creation during update
+                // Create updated role model
                 var (updatedUserRole, createError) = GroupUserRole.CreateFromDb(
                     groupUserRole.Id,
                     groupUserRole.UserId,
                     groupUserRole.GroupId,
-                    role,
+                    newRole,
                     groupUserRole.CreatedAt,
                     DateTime.UtcNow);
 

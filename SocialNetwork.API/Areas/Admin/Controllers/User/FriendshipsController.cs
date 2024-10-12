@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.User;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.Admin.Controllers.User
 {
     [ApiController]
-    [Route("api/friendships")]
+    [Area("Admin")]
+    [Route("admin/friendships")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ApiExplorerSettings(GroupName = "Admin")]
     public class FriendshipsController : ControllerBase
     {
         private readonly IFriendshipService _friendshipService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/friendships?userId=GUID
+        // GET: admin/friendships?userId=GUID
         [HttpGet]
         public async Task<IActionResult> GetFriendships([FromQuery] Guid userId)
         {
@@ -38,11 +43,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/friendships
+        // POST: admin/friendships
         [HttpPost]
         public async Task<IActionResult> CreateFriendship([FromBody] CreateFriendshipRequest request)
         {
-            var (friendship, error) = await _friendshipService.CreateFriendshipAsync(request.RequestingUserId, request.User2Id);
+            var (friendship, error) = await _friendshipService.CreateFriendshipAsync(request.User1Id, request.User2Id);
             if (!string.IsNullOrEmpty(error) || friendship == null) return BadRequest(new { Error = error });
 
             var response = new FriendshipResponse
@@ -58,7 +63,7 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetFriendships), new { userId = friendship.User1Id }, response);
         }
 
-        // PUT: api/friendships/{friendshipId}/accept
+        // PUT: admin/friendships/{friendshipId}/accept
         [HttpPut("{friendshipId}/accept")]
         public async Task<IActionResult> AcceptFriendship(Guid friendshipId, [FromQuery] Guid userId)
         {
@@ -78,11 +83,11 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // DELETE: api/friendships/{friendshipId}?requestingUserId=GUID
+        // DELETE: admin/friendships/{friendshipId}?userIdInFriendship=GUID
         [HttpDelete("{friendshipId}")]
-        public async Task<IActionResult> DeleteFriendship(Guid friendshipId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteFriendship(Guid friendshipId, [FromQuery] Guid userIdInFriendship)
         {
-            var (deletedId, error) = await _friendshipService.DeleteFriendshipAsync(friendshipId, requestingUserId);
+            var (deletedId, error) = await _friendshipService.DeleteFriendshipAsync(friendshipId, userIdInFriendship);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

@@ -1,12 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SocialNetwork.ApplicationLogic.Services;
-using SocialNetwork.Api.DTOs;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
+using SocialNetwork.Core.Enums;
+using SocialNetwork.API.DTO.Post;
 
-namespace SocialNetwork.Api.Controllers
+namespace SocialNetwork.API.Areas.Admin.Controllers.Post
 {
     [ApiController]
-    [Route("api/likes")]
+    [Area("Admin")]
+    [Route("admin/likes")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ApiExplorerSettings(GroupName = "Admin")]
     public class LikesController : ControllerBase
     {
         private readonly ILikeService _likeService;
@@ -18,7 +23,7 @@ namespace SocialNetwork.Api.Controllers
             _logger = logger;
         }
 
-        // GET: api/likes
+        // GET: admin/likes
         [HttpGet]
         public async Task<IActionResult> GetLikes([FromQuery] Guid? likeId, [FromQuery] Guid? userId, [FromQuery] Guid? postId, [FromQuery] Guid? commentId)
         {
@@ -37,7 +42,7 @@ namespace SocialNetwork.Api.Controllers
             return Ok(response);
         }
 
-        // POST: api/likes
+        // POST: admin/likes
         [HttpPost]
         public async Task<IActionResult> CreateLike([FromBody] CreateLikeRequest request)
         {
@@ -56,11 +61,11 @@ namespace SocialNetwork.Api.Controllers
             return CreatedAtAction(nameof(GetLikes), new { likeId = like.Id }, response);
         }
 
-        // DELETE: api/likes/{likeId}
+        // DELETE: admin/likes/{likeId}
         [HttpDelete("{likeId}")]
-        public async Task<IActionResult> DeleteLike(Guid likeId, [FromQuery] Guid requestingUserId)
+        public async Task<IActionResult> DeleteLike(Guid likeId, [FromQuery] Guid userId)
         {
-            var (deletedId, error) = await _likeService.DeleteLikeAsync(likeId, requestingUserId);
+            var (deletedId, error) = await _likeService.DeleteLikeAsync(likeId, userId);
             if (deletedId == Guid.Empty) return BadRequest(new { Error = error });
 
             return Ok(new { DeletedId = deletedId });

@@ -2,8 +2,8 @@
 {
     public enum GroupRole
     {
-        Admin,      // The admin of the group (creator)
-        Manager,    // The manager of the group (with certain permissions)
-        Member      // A regular member of the group
+        Admin = 0,      // The admin of the group (creator)
+        Manager = 1,    // The manager of the group (with certain permissions)
+        Member = 2      // A regular member of the group
     }
 }

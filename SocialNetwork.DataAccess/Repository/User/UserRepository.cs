@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SocialNetwork.Core.Enums;
 using SocialNetwork.Core.Interfaces.Repositories.UserRepository;
 using SocialNetwork.Core.Models;
 using SocialNetwork.DataAccess.Entities;
@@ -15,7 +16,7 @@ namespace SocialNetwork.DataAccess.Repositories
         }
 
         // Retrieve users with optional filtering
-        public async Task<List<User>> GetAsync(Guid? userId = null, string? username = null, string? email = null)
+        public async Task<List<User>> GetAsync(Guid? userId = null, string? username = null, string? email = null, UserRole? role = null)
         {
             IQueryable<UserEntity> query = _context.Users.AsNoTracking();
 
@@ -34,6 +35,11 @@ namespace SocialNetwork.DataAccess.Repositories
                 query = query.Where(user => user.Email == email);
             }
 
+            if (role.HasValue)
+            {
+                query = query.Where(user => user.Role == role.Value);
+            }
+
             query = query.OrderByDescending(user => user.CreatedAt);
 
             List<UserEntity> userEntities = await query.ToListAsync();
@@ -50,7 +56,8 @@ namespace SocialNetwork.DataAccess.Repositories
             {
                 Username = user.Username,
                 Email = user.Email,
-                PasswordHash = user.PasswordHash
+                PasswordHash = user.PasswordHash,
+                Role = user.Role
             };
 
             await _context.Users.AddAsync(userEntity);
@@ -68,6 +75,7 @@ namespace SocialNetwork.DataAccess.Repositories
                     .SetProperty(user => user.Username, updatedUser.Username)
                     .SetProperty(user => user.Email, updatedUser.Email)
                     .SetProperty(user => user.PasswordHash, updatedUser.PasswordHash)
+                    .SetProperty(user => user.Role, updatedUser.Role)
                     .SetProperty(user => user.UpdatedAt, updatedUser.UpdatedAt));
 
             return updatedUser;
@@ -90,6 +98,7 @@ namespace SocialNetwork.DataAccess.Repositories
                 entity.Id,
                 entity.Username,
                 entity.Email,
+                entity.Role,
                 entity.PasswordHash,
                 entity.CreatedAt,
                 entity.UpdatedAt);

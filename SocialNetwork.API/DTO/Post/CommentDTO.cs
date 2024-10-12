@@ -1,15 +1,26 @@
-﻿namespace SocialNetwork.Api.DTOs
+﻿namespace SocialNetwork.API.DTO.Post
 {
     public record CreateCommentRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
+        public Guid PostId { get; init; }
+        public string Content { get; init; }
+    }
+
+    public record CreateCommentByUserRequest
+    {
         public Guid PostId { get; init; }
         public string Content { get; init; }
     }
 
     public record UpdateCommentRequest
     {
-        public Guid RequestingUserId { get; init; }
+        public Guid UserId { get; init; }
+        public string Content { get; init; }
+    }
+
+    public record UpdateCommentByUserRequest
+    {
         public string Content { get; init; }
     }
 

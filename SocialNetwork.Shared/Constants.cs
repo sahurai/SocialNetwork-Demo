@@ -2,6 +2,11 @@
 {
     public static class Constants
     {
+        // Auth
+        public const int RefreshTokenExpiresInDays = 7;
+        public const int AccessTokenExpiresInMinutes = 15;
+        public const int RefreshRefreshTokenInDays = 1;
+
         // User
         public const int MaxUsernameLength = 100;
         public const int MaxEmailLength = 255;
