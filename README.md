@@ -1,6 +1,6 @@
 # Social Network API Documentation
 
-This project provides a well-structured API for a social network application, leveraging clean architecture principles with ASP.NET Core, Entity Framework, and PostgreSQL. Key features include user authorization, friendships, post interactions, group management, and more.
+This project provides a well-structured API for a social network application, leveraging clean architecture principles with ASP.NET Core, Entity Framework, and PostgreSQL. Key features include user authorization, friendships, post interactions, group management, and more. The project also employs a **cookie-based 2-token authorization** mechanism for enhanced security and token management.
 
 ---
 
@@ -75,8 +75,21 @@ Before starting, ensure you have the following installed:
 
    Swagger UI is enabled in this project for easy testing and documentation. Access it at:
    ```
-   https://localhost:5001/swagger
+   https://localhost:5000
+   or
+   https://localhost:5001
    ```
+
+---
+
+## Authorization - Cookie-Based 2-Token System
+
+This API implements a secure **cookie-based 2-token authorization** system that combines access and refresh tokens:
+
+1. **Access Token**: Used for user authentication in short-lived sessions, embedded in the cookies for frontend authorization.
+2. **Refresh Token**: Long-lived token stored securely in HttpOnly cookies. When the access token expires, the refresh token can request a new access token without requiring the user to re-authenticate.
+
+To enable this, ensure you have the JWT configurations set up correctly in `appsettings.json`, particularly for the `"Jwt"` settings, and configure middleware in the `Startup.cs` or `Program.cs` file to manage token validation and cookie settings.
 
 ---
 
