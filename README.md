@@ -17,7 +17,7 @@ Before starting, ensure you have the following installed:
 
    Clone the repository using Git:
    ```bash
-   git clone https://github.com/sahurai/SocialNetwork-Demo.git
+   git clone https://github.com/sahurai/SocialNetwork-Demo-API.git
    cd social-network-api
    ```
 
